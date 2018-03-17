@@ -23,23 +23,15 @@ namespace ConcDic
 
     class ReflectionCache
     {
-        private static readonly ConcurrentDictionary<Type, List<MethodInfo>> dict = new ConcurrentDictionary<Type, List<MethodInfo>>();
-        private static readonly ConcurrentBag<Type> done = new ConcurrentBag<Type>();
-        public static List<MethodInfo> GetMethodList(Type type)
+        private static readonly ConcurrentDictionary<Type, Lazy<List<MethodInfo>>> dict = new ConcurrentDictionary<Type, Lazy<List<MethodInfo>>>();
+        public static Lazy<List<MethodInfo>> GetMethodList(Type type)
         {
-            if (dict.TryAdd(type, new List<MethodInfo>()))
-            {
-                foreach (var property in type.GetProperties())
+            var result = dict.GetOrAdd(type, 
+                t => new Lazy<List<MethodInfo>>(()=>
                 {
-                    dict[type].Add(property.GetGetMethod());
-                }
-                done.Add(type);
-                return dict[type];
-            }
-            while (!done.Contains(type))
-            {
-            }
-            return dict[type];
+                    return t.GetProperties().Select(property => property.GetGetMethod()).ToList();
+                }));
+            return result;
         }
     }
 
@@ -60,6 +52,7 @@ namespace ConcDic
             try
             {
                 var list = ReflectionCache.GetMethodList(new X().GetType());
+                Console.WriteLine(list.Value);
                 Console.WriteLine();
             }
             catch (Exception ex)
